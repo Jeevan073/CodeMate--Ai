@@ -221,3 +221,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+/app/rag/data/
+/app/rag/embeddings/
+/app/rag/vector_db/
+/app/rag/retrieval/
+/app/rag/ingestion/
