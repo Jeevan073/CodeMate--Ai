@@ -52,27 +52,56 @@ class VectorStore:
             ]
         )
 
-    def search(self, query_embedding, n_results=5, language=None):
-        """Search for similar document chunks."""
+    def search(
+        self,
+        query_embedding,
+        n_results=5,
+        language=None,
+        file_id=None
+    ):
+        """Search documentation or a specific uploaded file."""
 
-        query_args = {
-            "query_embeddings": [query_embedding],
-            "n_results": min(
-                n_results,
-                self.collection.count()
-            )
-        }
+        total_count = self.collection.count()
 
-        if self.collection.count() == 0:
+        if total_count == 0:
             return {
                 "documents": [[]],
                 "metadatas": [[]],
                 "distances": [[]]
             }
 
-        if language:
+        where_conditions = []
+
+        # The documentation index stores C++ as "cpp", while the API and
+        # LLM contract use the conventional display value "c++".
+        normalized_language = language.lower().strip() if language else None
+        if normalized_language == "c++":
+            normalized_language = "cpp"
+
+        # A file ID scopes retrieval to one upload. Do not additionally filter
+        # by the selected language: uploaded formats such as JavaScript or
+        # Markdown may not match the current LLM language selector.
+        if normalized_language and not file_id:
+            where_conditions.append({
+                "language": normalized_language
+            })
+
+        if file_id:
+            where_conditions.append({
+                "file_id": file_id
+            })
+
+        query_args = {
+            "query_embeddings": [query_embedding],
+            "n_results": min(n_results, total_count)
+        }
+
+        if len(where_conditions) == 1:
+            query_args["where"] = where_conditions[0]
+
+        elif len(where_conditions) > 1:
             query_args["where"] = {
-                "language": language.lower()
+                "$and": where_conditions
             }
 
         return self.collection.query(**query_args)

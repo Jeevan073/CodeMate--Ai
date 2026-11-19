@@ -77,11 +77,20 @@ class LLMService:
 
     def respond(self, request):
 
+        file_id = getattr(request, "file_id", None)
+
+        # Preserve the original code supplied by the user.
+        original_code = request.code
+
+        retrieved_chunks = []
+        query = ""
+
         try:
-            # Retrieve relevant documentation
+
+            # Build RAG search query
             query_parts = [
                 request.user_input or "",
-                request.code or "",
+                original_code or "",
                 request.error_message or ""
             ]
 
@@ -89,33 +98,98 @@ class LLMService:
                 part for part in query_parts if part.strip()
             )
 
+            if file_id and not query:
+                query = "Analyze the uploaded source file"
+
             if query:
+
+                # Retrieve documentation or specific uploaded-file chunks
                 retrieved_chunks = self.retriever.retrieve(
                     query=query,
-                    language=request.language,
-                    top_k=5
+                    language=None if file_id else request.language,
+                    top_k=5,
+                    file_id=file_id
+                )
+
+                logger.info(
+                    "RAG retrieved %d chunks",
+                    len(retrieved_chunks)
+                )
+
+                print(
+                    f"CODEMATE RAG: Retrieved {len(retrieved_chunks)} chunks"
                 )
 
                 # Convert retrieved chunks into prompt context
                 request.rag_context = [
                     chunk["text"]
                     for chunk in retrieved_chunks
+                    if chunk.get("text")
                 ]
 
-                logger.info(
-                    "RAG retrieved %d chunks",
-                    len(retrieved_chunks)
-                )
-                print(f"CODEMATE RAG: Retrieved {len(retrieved_chunks)} chunks")
+                # Use uploaded source code as the actual source
+                # for debugging and explanation.
+                if file_id and request.task in ("debug", "explain"):
+
+                    if not retrieved_chunks:
+                        raise LLMServiceError(
+                            "No code chunks were found for the uploaded file. "
+                            "Check the file ID and language."
+                        )
+
+                    uploaded_code = "\n\n".join(
+                        chunk["text"]
+                        for chunk in retrieved_chunks
+                        if chunk.get("text")
+                    )
+
+                    if not uploaded_code.strip():
+                        raise LLMServiceError(
+                            "The uploaded file contains no retrievable code."
+                        )
+
+                    request.code = uploaded_code
+
+                    print(
+                        "CODEMATE: Uploaded source code loaded successfully"
+                    )
+
+        except LLMServiceError:
+            raise
 
         except Exception as exc:
-            # Keep LLM working even if RAG retrieval fails
+
             logger.exception("RAG retrieval failed")
+
+            # Do not silently debug placeholder code when a file ID
+            # was supplied but its retrieval failed.
+            if file_id:
+                raise LLMServiceError(
+                    "Unable to retrieve the uploaded source code. "
+                    "Please verify the file ID and try again."
+                ) from exc
+
+            # Preserve normal LLM operation when documentation
+            # retrieval fails.
             request.rag_context = None
 
-        # Build prompt after retrieving context
+        # Diagnostic logs
+        print("\n========== CODEMATE RAG DEBUG ==========")
+        print("TASK:", request.task)
+        print("FILE ID:", file_id)
+        print("RETRIEVED CHUNKS:", len(retrieved_chunks))
+        print("SOURCE CODE LENGTH:", len(request.code or ""))
+        print("RAG CONTEXT INCLUDED:", bool(request.rag_context))
+        print("========================================\n")
+
+        # Build prompt after retrieving uploaded code
         prompt = build_prompt(request)
-        print("CODEMATE RAG CONTEXT INCLUDED:", "Documentation 1:" in prompt)
+
+        print(
+            "CODEMATE RAG CONTEXT INCLUDED:",
+            "Context 1:" in prompt or "Documentation 1:" in prompt
+        )
+
         print("PROMPT LENGTH:", len(prompt))
 
         client = self._get_client()
@@ -210,5 +284,4 @@ class LLMService:
 
 
 # Shared reusable service
-
 llm_service = LLMService()
