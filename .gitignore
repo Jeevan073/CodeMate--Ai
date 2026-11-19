@@ -184,3 +184,4 @@ test_incremental.py
 test_pipeline_incremental.py
 test_retrieval.py
 test_voice_app.py
+/uploaded_files/
