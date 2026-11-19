@@ -52,27 +52,47 @@ class VectorStore:
             ]
         )
 
-    def search(self, query_embedding, n_results=5, language=None):
-        """Search for similar document chunks."""
+    def search(
+        self,
+        query_embedding,
+        n_results=5,
+        language=None,
+        file_id=None
+    ):
+        """Search documentation or a specific uploaded file."""
 
-        query_args = {
-            "query_embeddings": [query_embedding],
-            "n_results": min(
-                n_results,
-                self.collection.count()
-            )
-        }
+        total_count = self.collection.count()
 
-        if self.collection.count() == 0:
+        if total_count == 0:
             return {
                 "documents": [[]],
                 "metadatas": [[]],
                 "distances": [[]]
             }
 
+        where_conditions = []
+
         if language:
-            query_args["where"] = {
+            where_conditions.append({
                 "language": language.lower()
+            })
+
+        if file_id:
+            where_conditions.append({
+                "file_id": file_id
+            })
+
+        query_args = {
+            "query_embeddings": [query_embedding],
+            "n_results": min(n_results, total_count)
+        }
+
+        if len(where_conditions) == 1:
+            query_args["where"] = where_conditions[0]
+
+        elif len(where_conditions) > 1:
+            query_args["where"] = {
+                "$and": where_conditions
             }
 
         return self.collection.query(**query_args)

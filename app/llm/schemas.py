@@ -1,3 +1,4 @@
+
 from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
@@ -15,6 +16,8 @@ class LLMRequest(BaseModel):
     user_input: str = ""
 
     code: str | None = None
+
+    file_id: str | None = None
 
     error_message: str | None = None
 

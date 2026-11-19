@@ -13,11 +13,11 @@ router = APIRouter(prefix="/rag", tags=["RAG"])
 # Shared retriever instance
 retriever = CodeRetriever()
 
-
 class RAGRequest(BaseModel):
     query: str = Field(..., min_length=1)
     language: str | None = None
     top_k: int = Field(default=5, ge=1, le=20)
+    file_id: str | None = None
 
 
 class RAGResponse(BaseModel):
@@ -34,7 +34,8 @@ async def retrieve_context(payload: RAGRequest):
         results = retriever.retrieve(
             query=payload.query,
             language=payload.language,
-            top_k=payload.top_k
+            top_k=payload.top_k,
+            file_id=payload.file_id
         )
 
         return RAGResponse(
