@@ -98,12 +98,15 @@ class LLMService:
                 part for part in query_parts if part.strip()
             )
 
+            if file_id and not query:
+                query = "Analyze the uploaded source file"
+
             if query:
 
                 # Retrieve documentation or specific uploaded-file chunks
                 retrieved_chunks = self.retriever.retrieve(
                     query=query,
-                    language=request.language,
+                    language=None if file_id else request.language,
                     top_k=5,
                     file_id=file_id
                 )

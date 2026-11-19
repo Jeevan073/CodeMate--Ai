@@ -40,7 +40,7 @@ class LLMRequest(BaseModel):
                 raise ValueError("Coding request cannot be empty.")
 
         elif self.task in ("debug", "explain"):
-            if not self.code or not self.code.strip():
+            if not (self.code and self.code.strip()) and not self.file_id:
                 raise ValueError("Source code is required.")
 
         return self

@@ -72,9 +72,18 @@ class VectorStore:
 
         where_conditions = []
 
-        if language:
+        # The documentation index stores C++ as "cpp", while the API and
+        # LLM contract use the conventional display value "c++".
+        normalized_language = language.lower().strip() if language else None
+        if normalized_language == "c++":
+            normalized_language = "cpp"
+
+        # A file ID scopes retrieval to one upload. Do not additionally filter
+        # by the selected language: uploaded formats such as JavaScript or
+        # Markdown may not match the current LLM language selector.
+        if normalized_language and not file_id:
             where_conditions.append({
-                "language": language.lower()
+                "language": normalized_language
             })
 
         if file_id:
