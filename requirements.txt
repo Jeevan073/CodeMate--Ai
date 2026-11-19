@@ -1,0 +1,23 @@
+
+# CodeMate - Backend dependencies
+
+# FastAPI backend
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic>=2.0
+
+# LLM - OpenRouter
+openai
+python-dotenv
+
+# RAG - Vector database and embeddings
+chromadb
+sentence-transformers
+
+# Voice-to-text - Local Whisper
+openai-whisper
+
+# Testing
+pytest
+httpx
