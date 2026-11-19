@@ -174,3 +174,13 @@ codemate-rag/
 # ==========================================
 *.tmp
 *.bak
+# Test files (only if you don't want these in GitHub)
+check_gemini.py
+check_openrouter.py
+test_voice_app.py
+clean_sample_data.py
+check_docs.py
+test_incremental.py
+test_pipeline_incremental.py
+test_retrieval.py
+test_voice_app.py
