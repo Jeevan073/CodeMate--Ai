@@ -1,39 +1,95 @@
-from fastapi import APIRouter, UploadFile, File
-from groq import Groq
-router=APIRouter()
-client=Groq(api_key="YOUR_GROQ_API_KEY")
-def clean_and_analyze_text(text):
-    words=text.lower().split()
-    filler_words=["like","please","actually","basically","so","just"]
-    clean_words = []
-    for w in words:
-        if w not in filler_words:
-            clean_words.append(w)
-    cleaned=" ".join(clean_words)
-    languages=["python","java","c++","c","html","css","javascript","sql"]
-    detected_lang="general"
-    for lang in languages:
-        if lang in clean_words:
-            detected_lang=lang
-            break
-    if "error" in clean_words or "bug" in clean_words or "fix" in clean_words:
-        intent="debugging"
-    elif "explain" in clean_words:
-        intent="explanation"
-    else:
-        intent="code_generation"
-    return cleaned, detected_lang, intent
-@router.post("/voice-to-text")
-async def voice_to_text(audio: UploadFile = File(...)):
-    audio_bytes=await audio.read()
-    transcription=client.audio.transcriptions.create(
-        file=(audio.filename, audio_bytes),
-        model="whisper-large-v3-turbo"
-    )
-    cleaned_text,language,intent=clean_and_analyze_text(transcription.text)
-    return {
-        "raw_text":transcription.text,
-        "text":cleaned_text,
-        "language":language,
-        "intent":intent
-    }
+
+import os
+import tempfile
+import logging
+
+from fastapi import APIRouter, UploadFile, File, HTTPException
+
+from .services import transcribe_audio
+from .utils import validate_audio_file, clean_transcription
+
+router = APIRouter(
+    prefix="/voice-to-text",
+    tags=["Voice-to-Text"]
+)
+
+logger = logging.getLogger(__name__)
+
+
+@router.post("/transcribe")
+async def transcribe_voice(file: UploadFile = File(...)):
+
+    temp_path = None
+
+    try:
+        # Check file extension
+        extension = os.path.splitext(file.filename or "")[1].lower()
+
+        if not extension:
+            raise HTTPException(
+                status_code=400,
+                detail="Audio filename must have an extension"
+            )
+
+        # Save uploaded audio temporarily
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=extension
+        ) as temp_file:
+
+            temp_path = temp_file.name
+
+            total_size = 0
+
+            while chunk := await file.read(1024 * 1024):
+                total_size += len(chunk)
+
+                if total_size > 25 * 1024 * 1024:
+                    raise HTTPException(
+                        status_code=413,
+                        detail="Audio file exceeds 25 MB limit"
+                    )
+
+                temp_file.write(chunk)
+
+        # Validate audio file
+        validate_audio_file(temp_path)
+
+        # Transcribe using local Whisper
+        result = transcribe_audio(temp_path)
+
+        raw_text = result["text"]
+
+        # Clean transcription
+        cleaned_text = clean_transcription(raw_text)
+
+        return {
+            "success": True,
+            "filename": file.filename,
+            "raw_text": raw_text,
+            "transcribed_text": cleaned_text,
+            "language": result["language"]
+        }
+
+    except HTTPException:
+        raise
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+
+    except Exception:
+        logger.exception("Voice-to-text processing failed")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Audio transcription failed"
+        )
+
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+        await file.close()
