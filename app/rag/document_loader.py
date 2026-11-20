@@ -1,17 +1,14 @@
 
 import logging
 from pathlib import Path
-
 import fitz
 from bs4 import BeautifulSoup
 from docx import Document
 
 logger = logging.getLogger(__name__)
 
-# Project root: CodeMate-AI
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-# Documentation directory
 DATA_DIR = PROJECT_ROOT / "app" / "rag" / "data"
 
 SUPPORTED_EXTENSIONS = {
@@ -64,7 +61,6 @@ def extract_text(file_path: Path) -> str:
 
         soup = BeautifulSoup(html, "html.parser")
 
-        # Remove unnecessary elements
         for element in soup(
             ["script", "style", "nav", "footer", "header"]
         ):
@@ -156,9 +152,6 @@ def load_documents(data_dir: Path = DATA_DIR) -> list:
     logger.info("Total documents loaded: %d", len(documents))
 
     return documents
-
-
-
 if __name__ == "__main__":
     from collections import Counter
 
