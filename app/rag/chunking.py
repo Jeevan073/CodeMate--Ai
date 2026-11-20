@@ -1,12 +1,9 @@
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-
 def create_splitter():
     """
     Create a reusable text splitter.
     """
-
     return RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=150,
@@ -18,15 +15,12 @@ def create_splitter():
         ],
         length_function=len
     )
-
-
 def split_document(document, splitter=None):
     """
     Split one document into chunks.
 
     Preserves source and language metadata.
     """
-
     if splitter is None:
         splitter = create_splitter()
 
@@ -34,7 +28,6 @@ def split_document(document, splitter=None):
     metadata = document["metadata"]
 
     text_chunks = splitter.split_text(text)
-
     for index, chunk in enumerate(text_chunks):
 
         if not chunk.strip():
@@ -67,9 +60,7 @@ if __name__ == "__main__":
             "file_type": "txt"
         }
     }
-
     chunks = list(split_document(sample))
-
     print("\n========== CHUNKING REPORT ==========")
     print("Total chunks:", len(chunks))
 

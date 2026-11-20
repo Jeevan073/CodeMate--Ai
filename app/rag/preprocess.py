@@ -1,15 +1,10 @@
 
 import re
 import unicodedata
-
-
 def clean_text(text: str) -> str:
     """Clean documentation text without damaging code formatting."""
-
     if not isinstance(text, str):
         return ""
-
-    # Normalize Unicode characters
     text = unicodedata.normalize("NFC", text)
 
     # Remove null bytes and BOM

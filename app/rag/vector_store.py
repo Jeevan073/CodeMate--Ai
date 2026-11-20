@@ -1,8 +1,6 @@
 
 import chromadb
 from pathlib import Path
-
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CHROMA_DIR = PROJECT_ROOT / "chroma_db"
 
@@ -51,7 +49,6 @@ class VectorStore:
                 chunk["metadata"] for chunk in chunks
             ]
         )
-
     def search(
         self,
         query_embedding,
